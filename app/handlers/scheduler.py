@@ -8,8 +8,8 @@ import textwrap
 import os
 
 # Импорт функции из api/get_scheduler
-from api.get_scheduler import get_schedule
-from db.models import User
+from app.api.get_scheduler import get_schedule
+from app.db.models import User
 
 schedulerlist = Router()
 
@@ -39,113 +39,167 @@ def get_datetime_from_utc_msk(utc_time_str):
         return datetime.now()
 
 def load_safe_font(size, bold=False):
-    """Пытается загрузить системный шрифт, который точно есть на Win/Linux"""
-    font_names = []
-    if os.name == 'nt': # Windows
-        if bold:
-            font_names = ["arialbd.ttf", "tahomabd.ttf", "verdana.ttf"]
-        else:
-            font_names = ["arial.ttf", "tahoma.ttf", "verdana.ttf"]
-    else: # Linux
-        if bold:
-            font_names = ["DejaVuSans-Bold.ttf", "FreeSans-Bold.ttf", "LiberationSans-Bold.ttf"]
-        else:
-            font_names = ["DejaVuSans.ttf", "FreeSans.ttf", "LiberationSans.ttf"]
+    """Загружает шрифт с поддержкой кириллицы"""
+    # Список возможных путей к шрифтам
+    font_paths = [
+        "assets/fonts/noto-bold.ttf" if bold else "assets/fonts/noto.ttf",
+        "assets/fonts/dejavu.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
     
-    # Также проверяем наши скачанные шрифты как приоритетные
-    local_fonts = ["assets/fonts/noto-bold.ttf", "assets/fonts/noto.ttf"] if not bold else ["assets/fonts/noto-bold.ttf"]
-    
-    for font_name in (local_fonts + font_names):
+    for path in font_paths:
         try:
-            # Пробуем загрузить по имени (из системных путей) или по пути
-            return ImageFont.truetype(font_name, size)
+            # Если путь относительный, добавляем корень проекта
+            full_path = path
+            if not path.startswith('/'):
+                full_path = os.path.join(os.getcwd(), path)
+            
+            if os.path.exists(full_path):
+                return ImageFont.truetype(full_path, size)
         except:
             continue
             
     return ImageFont.load_default()
 
 def create_schedule_image(lessons):
-    width = 1000
-    header_h = 180
-    lesson_height = 140
-    day_header_h = 70
+    # Константы дизайна
+    WIDTH = 1000
+    PADDING = 50
+    HEADER_HEIGHT = 200
+    CARD_MARGIN = 25
+    CARD_PADDING = 30
+    SIDE_STRIP_WIDTH = 12
     
+    # Сортировка
     sorted_lessons = sorted(lessons, key=lambda x: x["from"])
-    unique_days = len(set(get_date_from_utc_msk(l["from"]) for l in sorted_lessons))
     
-    total_height = header_h + (len(lessons) * lesson_height) + (unique_days * day_header_h) + 100
-    total_height = max(600, total_height)
+    # Группировка по дням для расчета высоты
+    days_data = {}
+    for lesson in sorted_lessons:
+        date_str = get_datetime_from_utc_msk(lesson["from"]).strftime("%d.%m.%Y")
+        if date_str not in days_data:
+            days_data[date_str] = []
+        days_data[date_str].append(lesson)
+    
+    # Расчет высоты
+    # Header + (Кол-во дней * заголовок дня) + (Кол-во пар * высота пары) + Footer
+    total_height = HEADER_HEIGHT + (len(days_data) * 80) + (len(lessons) * 160) + 120
+    total_height = max(800, total_height)
 
-    # Цвета (Строгий современный стиль)
-    bg_color = (245, 247, 250)
-    accent_color = (33, 150, 243) # Blue
-    text_dark = (40, 44, 52)
-    text_muted = (120, 124, 135)
-    card_bg = (255, 255, 255)
+    # Цветовая палитра (Премиальный темный/светлый стиль)
+    BG_COLOR = (248, 249, 253)
+    ACCENT_COLOR = (63, 81, 181) # Indigo
+    ACCENT_LIGHT = (232, 234, 246)
+    TEXT_MAIN = (33, 33, 33)
+    TEXT_SECONDARY = (117, 117, 117)
+    CARD_BG = (255, 255, 255)
+    ONLINE_COLOR = (76, 175, 80) # Green
+    OFFLINE_COLOR = (255, 152, 0) # Orange
     
-    img = Image.new("RGB", (width, total_height), bg_color)
+    img = Image.new("RGB", (WIDTH, total_height), BG_COLOR)
     draw = ImageDraw.Draw(img)
     
-    font_lg = load_safe_font(44, True)
-    font_md_b = load_safe_font(28, True)
-    font_md = load_safe_font(28)
-    font_sm = load_safe_font(22)
-    font_xs = load_safe_font(18)
+    # Шрифты
+    font_h1 = load_safe_font(52, True)
+    font_h2 = load_safe_font(32, True)
+    font_time = load_safe_font(28, True)
+    font_body = load_safe_font(26)
+    font_info = load_safe_font(20)
+    font_footer = load_safe_font(18)
+    font_tag = load_safe_font(16, True)
 
-    # Header
-    draw.rectangle([(0, 0), (width, header_h)], fill=accent_color)
-    draw.text((width // 2, 70), "РАСПИСАНИЕ ЗАНЯТИЙ", fill="white", font=font_lg, anchor="mm")
-    draw.text((width // 2, 130), f"Всего занятий: {len(lessons)}", fill="white", font=font_md, anchor="mm")
+    # 1. Header
+    draw.rectangle([(0, 0), (WIDTH, HEADER_HEIGHT)], fill=ACCENT_COLOR)
+    # Декоративный элемент в хедере
+    draw.ellipse([WIDTH-150, -50, WIDTH+50, 150], fill=(255, 255, 255, 40))
+    
+    draw.text((PADDING, 60), "РАСПИСАНИЕ", fill="white", font=font_h1)
+    draw.text((PADDING, 130), f"Период: {datetime.now().strftime('%d.%m')} — {(datetime.now() + timedelta(days=7)).strftime('%d.%m.%Y')}", fill=(220, 220, 220), font=font_body)
+    
+    # Статистика в углу хедера
+    stat_text = f"Занятий: {len(lessons)}"
+    stat_bbox = draw.textbbox((0, 0), stat_text, font=font_h2)
+    draw.text((WIDTH - PADDING - (stat_bbox[2]-stat_bbox[0]) - 50, 80), stat_text, fill="white", font=font_h2)
 
-    y = header_h + 30
-    current_date = None
-    days_ru = {"MONDAY": "ПОНЕДЕЛЬНИК", "TUESDAY": "ВТОРНИК", "WEDNESDAY": "СРЕДА", 
-               "THURSDAY": "ЧЕТВЕРГ", "FRIDAY": "ПЯТНИЦА", "SATURDAY": "СУББОТА", "SUNDAY": "ВОСКРЕСЕНЬЕ"}
+    y_offset = HEADER_HEIGHT + 40
+    days_ru = {"MONDAY": "Понедельник", "TUESDAY": "Вторник", "WEDNESDAY": "Среда", 
+               "THURSDAY": "Четверг", "FRIDAY": "Пятница", "SATURDAY": "Суббота", "SUNDAY": "Воскресенье"}
 
-    for lesson in sorted_lessons:
-        msk_dt = get_datetime_from_utc_msk(lesson["from"])
-        date_str = msk_dt.strftime("%d.%m.%Y")
+    for date_str, day_lessons in days_data.items():
+        # Заголовок дня
+        msk_dt = get_datetime_from_utc_msk(day_lessons[0]["from"])
+        day_name = days_ru.get(msk_dt.strftime("%A").upper(), msk_dt.strftime("%A").upper())
         
-        if date_str != current_date:
-            current_date = date_str
-            day_name = days_ru.get(msk_dt.strftime("%A").upper(), msk_dt.strftime("%A").upper())
-            y += 20
-            draw.text((60, y), f"{day_name} • {date_str}", fill=text_dark, font=font_md_b)
-            draw.line([(60, y + 40), (width - 60, y + 40)], fill=accent_color, width=2)
-            y += 60
+        # Подложка под дату
+        draw.text((PADDING, y_offset), f"{day_name}, {date_str}", fill=ACCENT_COLOR, font=font_h2)
+        y_offset += 55
+        draw.line([(PADDING, y_offset), (WIDTH - PADDING, y_offset)], fill=(200, 200, 200), width=1)
+        y_offset += 30
 
-        # Card
-        x1, y1 = 60, y
-        x2, y2 = width - 60, y + 120
-        draw.rectangle([(x1, y1), (x2, y2)], fill=card_bg, outline=(220, 220, 220), width=1)
-        draw.rectangle([(x1, y1), (x1 + 8, y2)], fill=accent_color) # Боковая полоса
+        for lesson in day_lessons:
+            # Параметры карточки
+            card_x1 = PADDING
+            card_y1 = y_offset
+            card_x2 = WIDTH - PADDING
+            card_y2 = y_offset + 140
+            
+            # Тень (имитация)
+            draw.rectangle([(card_x1+2, card_y1+2), (card_x2+2, card_y2+2)], fill=(230, 230, 230))
+            # Фон карточки
+            draw.rectangle([(card_x1, card_y1), (card_x2, card_y2)], fill=CARD_BG, outline=(225, 225, 225), width=1)
+            
+            # Акцентная полоса слева
+            status_color = ONLINE_COLOR if lesson.get("isOnline") else OFFLINE_COLOR
+            draw.rectangle([(card_x1, card_y1), (card_x1 + SIDE_STRIP_WIDTH, card_y2)], fill=status_color)
 
-        # Time
-        time_str = f"{convert_utc_to_msk(lesson['from'])} - {convert_utc_to_msk(lesson['to'])}"
-        draw.text((x1 + 30, y1 + 35), time_str, fill=accent_color, font=font_md_b)
+            # Время
+            time_start = convert_utc_to_msk(lesson['from'])
+            time_end = convert_utc_to_msk(lesson['to'])
+            draw.text((card_x1 + 40, card_y1 + 35), f"{time_start}", fill=TEXT_MAIN, font=font_time)
+            draw.text((card_x1 + 40, card_y1 + 75), f"{time_end}", fill=TEXT_SECONDARY, font=font_body)
 
-        # Info
-        discipline = lesson["discipline"]["name"]
-        lines = textwrap.wrap(discipline, width=40)
-        for i, line in enumerate(lines[:2]):
-            draw.text((x1 + 250, y1 + 25 + i * 35), line, fill=text_dark, font=font_md)
+            # Разделитель времени и контента
+            draw.line([(card_x1 + 160, card_y1 + 30), (card_x1 + 160, card_y2 - 30)], fill=(230, 230, 230), width=1)
 
-        classroom = lesson['classroom']['name'] if lesson.get('classroom') else "???"
-        group = lesson['learningGroup']['name'] if lesson.get('learningGroup') else "???"
-        draw.text((x1 + 250, y1 + 85), f"Ауд: {classroom}  |  Группа: {group}", fill=text_muted, font=font_sm)
+            # Дисциплина
+            discipline = lesson["discipline"]["name"]
+            # Ограничение длины текста
+            max_chars = 45
+            if len(discipline) > max_chars:
+                discipline = discipline[:max_chars-3] + "..."
+            
+            draw.text((card_x1 + 190, card_y1 + 30), discipline, fill=TEXT_MAIN, font=font_h2)
 
-        # Status
-        status = "ОНЛАЙН" if lesson.get("isOnline") else "ОЧНО"
-        draw.rectangle([(x2 - 130, y1 + 40), (x2 - 30, y1 + 80)], outline=accent_color, width=2)
-        draw.text((x2 - 80, y1 + 60), status, fill=accent_color, font=font_xs, anchor="mm")
+            # Доп инфо (Аудитория, Группа)
+            classroom = lesson['classroom']['name'] if lesson.get('classroom') else "—"
+            group = lesson['learningGroup']['name'] if lesson.get('learningGroup') else "—"
+            info_text = f"Ауд: {classroom}   •   Гр: {group}"
+            draw.text((card_x1 + 190, card_y1 + 85), info_text, fill=TEXT_SECONDARY, font=font_info)
 
-        y += lesson_height
+            # Тег статуса (Онлайн/Очно)
+            status_text = "ОНЛАЙН" if lesson.get("isOnline") else "ОЧНО"
+            tag_w, tag_h = 110, 36
+            tag_x1 = card_x2 - tag_w - 30
+            tag_y1 = card_y2 - tag_h - 20
+            draw.rounded_rectangle([(tag_x1, tag_y1), (tag_x1 + tag_w, tag_y1 + tag_h)], radius=5, fill=ACCENT_LIGHT)
+            
+            # Центрирование текста в теге
+            t_bbox = draw.textbbox((0, 0), status_text, font=font_tag)
+            t_w = t_bbox[2] - t_bbox[0]
+            t_h = t_bbox[3] - t_bbox[1]
+            draw.text((tag_x1 + (tag_w - t_w)//2, tag_y1 + (tag_h - t_h)//2 - 2), status_text, fill=ACCENT_COLOR, font=font_tag)
+
+            y_offset += 140 + CARD_MARGIN
+        
+        y_offset += 20
 
     # Footer
-    draw.text((width // 2, total_height - 40), f"LXP Бот • {datetime.now().strftime('%d.%m.%Y %H:%M')}", fill=text_muted, font=font_xs, anchor="mm")
+    footer_text = f"Сгенерировано LXP Bot • {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+    draw.text((WIDTH // 2, total_height - 50), footer_text, fill=TEXT_SECONDARY, font=font_footer, anchor="mm")
 
     img_bytes = BytesIO()
-    img.save(img_bytes, format="PNG")
+    img.save(img_bytes, format="PNG", optimize=True)
     img_bytes.seek(0)
     return img_bytes.getvalue()
 
@@ -227,6 +281,10 @@ async def show_full_schedule(call: CallbackQuery):
     schedule_data = await get_schedule(user.email, user.password)
     lessons = schedule_data['data']['manyClasses']
     
+    if not lessons:
+        await call.message.answer("❌ Расписание пусто.")
+        return
+
     img_bytes = create_schedule_image(lessons)
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="📅 СЕГОДНЯ", callback_data="schedule_today")], [InlineKeyboardButton(text="◀️ НАЗАД", callback_data="schedule")]])
