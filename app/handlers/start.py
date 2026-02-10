@@ -14,28 +14,36 @@ from db.models import User
 from api.check_exist import login_data
 from api.get_scheduler import add_to_data
 
-import locale
 from datetime import datetime
-
-try:
-    locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
-except:
-    pass
 
 starter = Router()
 
 async def show_profile(message_or_call, user):
-    dt = datetime.fromisoformat(f"{user.createdAt}".replace("Z", "+00:00"))
-    caption = f"""
-<b> 💁🏻‍♀️ Ваш профиль </b>
-                                   
-🔹 Имя: {user.firstName}
-🔹 Фамилия: {user.lastName}
-🔹 Почта: {user.email}
-🖥 Дата поступления: <tg-spoiler>{dt.strftime("%d %B %Y")}</tg-spoiler>
+    try:
+        # Исправляем отображение даты поступления (убираем крокозябры)
+        dt_str = user.createdAt
+        if dt_str:
+            dt = datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+            date_display = dt.strftime("%d.%m.%Y")
+        else:
+            date_display = "Не указана"
+    except Exception as e:
+        print(f"Date parsing error: {e}")
+        date_display = "Ошибка даты"
 
-📞 Номер: <tg-spoiler>{user.phoneNumber}</tg-spoiler>
-🎲 Роль: <b>{'Студент' if user.role == 'student' else 'Преподаватель'}</b>
+    # Исправляем логику ролей (STUDENT -> Студент, остальное -> Преподаватель)
+    role_display = "Студент" if user.role == "STUDENT" else "Преподаватель"
+
+    caption = f"""
+<b>👤 Ваш профиль</b>
+                                   
+🔹 Имя: {user.firstName or 'Не указано'}
+🔹 Фамилия: {user.lastName or 'Не указано'}
+🔹 Почта: {user.email}
+📅 Дата поступления: <code>{date_display}</code>
+
+📞 Номер: <code>{user.phoneNumber or 'Не указано'}</code>
+🎲 Роль: <b>{role_display}</b>
 """
     if isinstance(message_or_call, Message):
         await message_or_call.answer_photo(f"{user.avatar}", caption=caption, parse_mode="HTML", reply_markup=buttons_account())
@@ -52,9 +60,9 @@ async def start(message: Message, state: FSMContext):
         await show_profile(message, user)
     else:
         await message.answer(
-            "Приветствую тебя, дорогой студент ITHub'a\n"
-            "Я - бот, который поможет тебе с расписаниями, заданиями и многим другим!\n"
-            "Нажмите кнопку ниже, чтобы войти.", 
+            "Приветствую тебя, студент ITHub!\n"
+            "Я — бот, который поможет тебе с расписанием и заданиями.\n"
+            "Нажми кнопку ниже, чтобы войти.", 
             reply_markup=start_command()
         )
 
@@ -70,18 +78,19 @@ async def profile_callback(call: CallbackQuery, state: FSMContext):
 @starter.callback_query(F.data == "start")
 async def enter_information(call: CallbackQuery, state: FSMContext):
     await call.answer()
-    await call.message.answer("Отлично!\nОтправьте мне данные от LXP!\nПример:\nemail\npassword")
+    await call.message.answer("Введите данные от LXP через пробел или с новой строки:\n\nEmail\nПароль")
     await state.set_state(LoginForm.data)
 
 @starter.message(LoginForm.data)
 async def process_form(message: Message, state: FSMContext):
     data = message.text.split()
 
-    if len(data) != 2:
-        await message.answer("Некорректный формат. Введите email и пароль через пробел или на разных строках.")
+    if len(data) < 2:
+        await message.answer("Некорректный формат. Введите email и пароль через пробел.")
         return
 
-    email, password = data
+    email = data[0]
+    password = data[1]
     
     if login_data(email, password):
         user = await User.get_or_none(telegram_id=message.from_user.id)

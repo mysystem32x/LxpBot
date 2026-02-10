@@ -9,6 +9,7 @@ from handlers.logout import leave
 from handlers.scheduler import schedulerlist
 from handlers.task_list import tasklist
 from handlers.settings import setting_user
+from handlers.admin import admin_router, maintenance_middleware
 
 # Импорт сервиса напоминаний
 from services.reminders import init_reminder_service, check_deadlines
@@ -40,16 +41,20 @@ async def on_shutdown():
 async def main():
     # Инициализация БД
     await init_db()
-   # await Tortoise.generate_schemas(safe=False)  # force update
     
     # Создаем бота и диспетчер
     bot = Bot(TOKEN)
     dp = Dispatcher()
     
+    # Регистрация мидлвари для техработ
+    dp.message.outer_middleware(maintenance_middleware)
+    dp.callback_query.outer_middleware(maintenance_middleware)
+    
     # Инициализируем сервис напоминаний ДО регистрации роутеров
     init_reminder_service(bot)
     
     # Регистрируем роутеры
+    dp.include_router(admin_router) # Админка первой
     dp.include_router(starter)
     dp.include_router(leave)
     dp.include_router(schedulerlist)
@@ -76,11 +81,15 @@ async def main():
         await close_db()
 
 if __name__ == "__main__":
-    # Настраиваем логирование
+    # Настраиваем логирование в файл для админки
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.FileHandler("bot.log"),
+            logging.StreamHandler()
+        ]
     )
     
     # Запускаем главную функцию

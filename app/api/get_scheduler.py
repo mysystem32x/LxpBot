@@ -239,7 +239,7 @@ async def add_to_data(email, password, telegram_id):
         "firstName": data["data"]["getMe"]["firstName"],
         "lastName": data["data"]["getMe"]["lastName"],
         "avatar": data["data"]["getMe"]["avatar"] if data["data"]["getMe"]["avatar"] else "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQoup9xGtNGZa5i4NRTAgxr-urdEBQJZWYNcA&s",
-        "role": data["data"]["getMe"]["roles"][0],
+        "role": "STUDENT" if "STUDENT" in data["data"]["getMe"]["roles"] else "TEACHER",
         "id_student": data['data']['getMe']['id'],
         "createdAt": data["data"]["getMe"]["createdAt"]
     })
