@@ -39,26 +39,30 @@ def get_datetime_from_utc_msk(utc_time_str):
         return datetime.now()
 
 def load_fonts():
-    # Пути к шрифтам Comic Neue (аналог Comic Sans с поддержкой кириллицы)
-    font_path = "/home/ubuntu/LXPBOT/assets/fonts/comic.ttf"
-    font_bold_path = "/home/ubuntu/LXPBOT/assets/fonts/comic-bold.ttf"
+    # Приоритет Noto Sans для гарантированной кириллицы (кубиков не будет)
+    font_path = "/home/ubuntu/LXPBOT/assets/fonts/noto.ttf"
+    font_bold_path = "/home/ubuntu/LXPBOT/assets/fonts/noto-bold.ttf"
     
-    try:
-        if os.path.exists(font_bold_path):
-            font_large = ImageFont.truetype(font_bold_path, 48)
-            font_medium_bold = ImageFont.truetype(font_bold_path, 32)
-        else:
-            font_large = ImageFont.load_default()
-            font_medium_bold = ImageFont.load_default()
+    # Запасной вариант - Comic Neue
+    alt_font_path = "/home/ubuntu/LXPBOT/assets/fonts/comic.ttf"
+    alt_font_bold_path = "/home/ubuntu/LXPBOT/assets/fonts/comic-bold.ttf"
+    
+    def get_font(path, size, alt_path=None):
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+        if alt_path and os.path.exists(alt_path):
+            return ImageFont.truetype(alt_path, size)
+        return ImageFont.load_default()
 
-        if os.path.exists(font_path):
-            font_medium = ImageFont.truetype(font_path, 32)
-            font_small = ImageFont.truetype(font_path, 24)
-            font_tiny = ImageFont.truetype(font_path, 20)
-        else:
-            font_medium = ImageFont.load_default()
-            font_small = ImageFont.load_default()
-            font_tiny = ImageFont.load_default()
+    try:
+        font_large = get_font(font_bold_path, 48, alt_font_bold_path)
+        font_medium_bold = get_font(font_bold_path, 32, alt_font_bold_path)
+        font_medium = get_font(font_path, 32, alt_font_path)
+        font_small = get_font(font_path, 24, alt_font_path)
+        font_tiny = get_font(font_path, 20, alt_font_path)
+    except Exception as e:
+        print(f"Font loading error: {e}")
+        font_large = font_medium = font_medium_bold = font_small = font_tiny = ImageFont.load_default()
             
     except Exception as e:
         print(f"Font loading error: {e}")
@@ -217,25 +221,35 @@ async def show_today_schedule(call: CallbackQuery):
     today = datetime.now().date()
     today_lessons = sorted([l for l in lessons if get_date_from_utc_msk(l['from']) == today], key=lambda x: x['from'])
     
-    if not today_lessons:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="📊 ПОЛНОЕ", callback_data="schedule_full")], [InlineKeyboardButton(text="◀️ НАЗАД", callback_data="schedule")]])
-        await call.message.edit_text("📅 <b>Сегодня занятий нет.</b>\nМожно отдохнуть!", parse_mode="HTML", reply_markup=keyboard)
-        return
-    
-    text = "📅 <b>РАСПИСАНИЕ НА СЕГОДНЯ</b>\n\n"
-    for i, lesson in enumerate(today_lessons, 1):
-        start = convert_utc_to_msk(lesson['from'])
-        end = convert_utc_to_msk(lesson['to'])
-        type_l = "☁️ ОНЛАЙН" if lesson.get('isOnline') else "🏛 ОЧНО"
-        text += f"<b>{i}. {start}–{end}</b> | {type_l}\n"
-        text += f"📘 <b>{lesson['discipline']['name']}</b>\n"
-        text += f"📍 {lesson['classroom']['name']}\n"
-        if lesson.get('meetingLink'):
-            text += f"🔗 <a href='{lesson['meetingLink']}'>Ссылка на встречу</a>\n"
-        text += "─" * 15 + "\n"
-    
     keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="📊 ПОЛНОЕ", callback_data="schedule_full")], [InlineKeyboardButton(text="◀️ НАЗАД", callback_data="schedule")]])
-    await call.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
+    
+    if not today_lessons:
+        text = "📅 <b>Сегодня занятий нет.</b>\nМожно отдохнуть!"
+    else:
+        text = "📅 <b>РАСПИСАНИЕ НА СЕГОДНЯ</b>\n\n"
+        for i, lesson in enumerate(today_lessons, 1):
+            start = convert_utc_to_msk(lesson['from'])
+            end = convert_utc_to_msk(lesson['to'])
+            type_l = "☁️ ОНЛАЙН" if lesson.get('isOnline') else "🏛 ОЧНО"
+            text += f"<b>{i}. {start}–{end}</b> | {type_l}\n"
+            text += f"📘 <b>{lesson['discipline']['name']}</b>\n"
+            text += f"📍 {lesson['classroom']['name']}\n"
+            if lesson.get('meetingLink'):
+                text += f"🔗 <a href='{lesson['meetingLink']}'>Ссылка на встречу</a>\n"
+            text += "─" * 15 + "\n"
+    
+    try:
+        if call.message.photo:
+            await call.message.delete()
+            await call.message.answer(text, parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
+        else:
+            if call.message.text != text:
+                await call.message.edit_text(text, parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
+            else:
+                await call.answer()
+    except Exception as e:
+        print(f"Error updating schedule message: {e}")
+        await call.message.answer(text, parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
 
 @schedulerlist.callback_query(F.data == "schedule_full")
 async def show_full_schedule(call: CallbackQuery):

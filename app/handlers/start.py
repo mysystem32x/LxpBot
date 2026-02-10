@@ -45,11 +45,12 @@ async def show_profile(message_or_call, user):
 📞 Номер: <code>{user.phoneNumber or 'Не указано'}</code>
 🎲 Роль: <b>{role_display}</b>
 """
+    user_id = message_or_call.from_user.id
     if isinstance(message_or_call, Message):
-        await message_or_call.answer_photo(f"{user.avatar}", caption=caption, parse_mode="HTML", reply_markup=buttons_account())
+        await message_or_call.answer_photo(f"{user.avatar}", caption=caption, parse_mode="HTML", reply_markup=buttons_account(user_id))
     else:
         await message_or_call.message.delete()
-        await message_or_call.message.answer_photo(f"{user.avatar}", caption=caption, parse_mode="HTML", reply_markup=buttons_account())
+        await message_or_call.message.answer_photo(f"{user.avatar}", caption=caption, parse_mode="HTML", reply_markup=buttons_account(user_id))
 
 @starter.message(CommandStart(), StateFilter("*"))
 async def start(message: Message, state: FSMContext):

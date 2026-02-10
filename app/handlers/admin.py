@@ -8,7 +8,7 @@ import os
 admin_router = Router()
 
 # Список ID администраторов (можно добавить ID пользователя)
-ADMIN_IDS = [561234567, 123456789] # Сюда можно добавить ID владельца
+ADMIN_IDS = [8039700599] # ID владельца
 
 # Файл-флаг для отключения бота (простая реализация "выключения")
 MAINTENANCE_FILE = "maintenance.flag"
@@ -16,9 +16,17 @@ MAINTENANCE_FILE = "maintenance.flag"
 def is_admin(user_id: int):
     return user_id in ADMIN_IDS
 
+@admin_router.callback_query(F.data == "admin_start")
+async def admin_start_callback(call: CallbackQuery):
+    await admin_panel(call.message, call.from_user.id)
+    await call.answer()
+
 @admin_router.message(Command("admin"))
-async def admin_panel(message: Message):
-    if not is_admin(message.from_user.id):
+async def admin_command(message: Message):
+    await admin_panel(message, message.from_user.id)
+
+async def admin_panel(message: Message, user_id: int):
+    if not is_admin(user_id):
         return
 
     users_count = await User.all().count()
@@ -92,12 +100,12 @@ async def admin_toggle_bot(call: CallbackQuery):
             f.write("on")
         await call.answer("Бот переведен в режим техработ", show_alert=True)
     
-    await admin_panel(call.message)
+    await admin_panel(call.message, call.from_user.id)
     await call.message.delete()
 
 @admin_router.callback_query(F.data == "admin_back")
 async def admin_back(call: CallbackQuery):
-    await admin_panel(call.message)
+    await admin_panel(call.message, call.from_user.id)
     await call.message.delete()
 
 # Middleware для проверки режима техработ
