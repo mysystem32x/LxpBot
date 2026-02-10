@@ -1,4 +1,3 @@
-# ЗАМЕНИ весь файл на этот код:
 import asyncio
 from datetime import datetime, timedelta, timezone
 import logging
@@ -66,9 +65,12 @@ async def send_reminder_if_needed(user, task, reminder_type):
     try:
         from db.models import SentReminder
         
+        # В API LXPBOT ID задания находится в task["id"]
+        task_id = str(task.get("id"))
+        
         sent = await SentReminder.filter(
             user_id=user.id,
-            task_id=task["contentBlock"]["id"],
+            task_id=task_id,
             reminder_type=reminder_type
         ).exists()
         
@@ -77,7 +79,7 @@ async def send_reminder_if_needed(user, task, reminder_type):
             
             await SentReminder.create(
                 user_id=user.id,
-                task_id=task["contentBlock"]["id"],
+                task_id=task_id,
                 reminder_type=reminder_type
             )
             return True
@@ -118,13 +120,18 @@ async def check_deadlines():
                         if not deadline:
                             continue
                         
-                        deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+                        try:
+                            deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+                        except ValueError:
+                            continue
+                            
                         now = datetime.now(timezone.utc)
                         time_left = deadline_dt - now
                         
                         if time_left.total_seconds() <= 0:
                             continue
                         
+                        # Проверка дедлайнов (24ч, 3ч, 1ч)
                         if (timedelta(hours=0) < time_left <= timedelta(hours=24) 
                             and settings['remind_24h']):
                             await send_reminder_if_needed(user, task, "24h")

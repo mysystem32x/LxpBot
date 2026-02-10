@@ -97,6 +97,7 @@ async def show_tasks_page(call: CallbackQuery, page: int = None):
         ))
     
     builder.row(*nav_buttons)
+    builder.row(InlineKeyboardButton(text="🏠 Главное меню", callback_data="profile"))
     
     # Отправляем/редактируем сообщение
     if call.message.text:

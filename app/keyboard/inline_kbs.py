@@ -1,14 +1,10 @@
-# inline_kbs.py - инлайн клавиатуры для сообщений.
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-# - первоначальная кнопка
 def start_command():
-    btn = InlineKeyboardMarkup(inline_keyboard=[
+    return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Начать", callback_data="start")]
     ])
-    return btn
 
-# - кнопки "Личного кабинета"
 def buttons_account():
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -23,3 +19,16 @@ def buttons_account():
         ]
     )
 
+def back_to_profile():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="◀️ Назад в профиль", callback_data="profile")]
+        ]
+    )
+
+def back_to_main():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🏠 Главное меню", callback_data="profile")]
+        ]
+    )

@@ -29,14 +29,17 @@ async def leave_acc(call: CallbackQuery):
     user = await User.get_or_none(telegram_id=call.from_user.id)
     await user.delete()
 
+    from keyboard.inline_kbs import start_command
     await call.message.edit_text(
-        "<b> Вы вышли с аккаунта :( </b>", parse_mode="HTML"
+        "<b> Вы вышли с аккаунта :( </b>", parse_mode="HTML", reply_markup=start_command()
     )
 
 @leave.callback_query(F.data=="No")
 async def leave_acc(call: CallbackQuery):
-    await call.answer(show_alert=True)
-
-    await call.message.edit_text(
-        "<b> Вы отменили операцию. </b>", parse_mode="HTML"
-    )
+    await call.answer()
+    from .start import show_profile
+    user = await User.get_or_none(telegram_id=call.from_user.id)
+    if user:
+        await show_profile(call, user)
+    else:
+        await call.message.edit_text("<b>Вы отменили операцию.</b>", parse_mode="HTML")

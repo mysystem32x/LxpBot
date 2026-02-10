@@ -52,7 +52,7 @@ def get_settings_keyboard(user_settings: dict) -> InlineKeyboardMarkup:
             )
         ],
         [
-            InlineKeyboardButton(text="⬅️ Назад", callback_data="back_to_main")
+            InlineKeyboardButton(text="🏠 Главное меню", callback_data="profile")
         ]
     ]
     
@@ -75,6 +75,7 @@ async def show_settings(call: CallbackQuery):
     text = get_settings_text(user_settings)
     keyboard = get_settings_keyboard(user_settings)
     
+    await call.message.delete()
     await call.message.answer(text, reply_markup=keyboard, parse_mode="HTML")
     await call.answer()
 # Обработчики переключения настроек
