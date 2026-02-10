@@ -65,8 +65,8 @@ async def send_reminder_if_needed(user, task, reminder_type):
     try:
         from db.models import SentReminder
         
-        # В API LXPBOT ID задания находится в task["id"]
-        task_id = str(task.get("id"))
+        # В API LXPBOT ID задания находится в task["contentBlock"]["id"]
+        task_id = str(task.get("contentBlock", {}).get("id") or task.get("id"))
         
         sent = await SentReminder.filter(
             user_id=user.id,

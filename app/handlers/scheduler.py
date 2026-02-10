@@ -2,7 +2,9 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedIn
 from aiogram.types import Message, CallbackQuery
 from aiogram import Router, F
 from datetime import datetime, timedelta
-import imgkit
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
 import os
 
 # Импорт функции из api/get_scheduler
@@ -29,206 +31,123 @@ def get_date_from_utc_msk(utc_time_str):
     except:
         return datetime.now().date()
 
+def get_datetime_from_utc_msk(utc_time_str):
+    try:
+        utc_time = datetime.fromisoformat(utc_time_str.replace('Z', ''))
+        return utc_time + timedelta(hours=3)
+    except:
+        return datetime.now()
+
+def load_safe_font(size, bold=False):
+    """Пытается загрузить системный шрифт, который точно есть на Win/Linux"""
+    font_names = []
+    if os.name == 'nt': # Windows
+        if bold:
+            font_names = ["arialbd.ttf", "tahomabd.ttf", "verdana.ttf"]
+        else:
+            font_names = ["arial.ttf", "tahoma.ttf", "verdana.ttf"]
+    else: # Linux
+        if bold:
+            font_names = ["DejaVuSans-Bold.ttf", "FreeSans-Bold.ttf", "LiberationSans-Bold.ttf"]
+        else:
+            font_names = ["DejaVuSans.ttf", "FreeSans.ttf", "LiberationSans.ttf"]
+    
+    # Также проверяем наши скачанные шрифты как приоритетные
+    local_fonts = ["assets/fonts/noto-bold.ttf", "assets/fonts/noto.ttf"] if not bold else ["assets/fonts/noto-bold.ttf"]
+    
+    for font_name in (local_fonts + font_names):
+        try:
+            # Пробуем загрузить по имени (из системных путей) или по пути
+            return ImageFont.truetype(font_name, size)
+        except:
+            continue
+            
+    return ImageFont.load_default()
+
 def create_schedule_image(lessons):
-    # Пытаемся настроить путь для Windows, если wkhtmltoimage не в PATH
-    config = None
-    if os.name == 'nt':  # Если запуск на Windows
-        paths = [
-            r'C:\Program Files\wkhtmltopdf\bin\wkhtmltoimage.exe',
-            r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltoimage.exe'
-        ]
-        for path in paths:
-            if os.path.exists(path):
-                config = imgkit.config(wkhtmltoimage=path)
-                break
+    width = 1000
+    header_h = 180
+    lesson_height = 140
+    day_header_h = 70
     
     sorted_lessons = sorted(lessons, key=lambda x: x["from"])
+    unique_days = len(set(get_date_from_utc_msk(l["from"]) for l in sorted_lessons))
     
-    # Группировка по дням
-    days_data = {}
+    total_height = header_h + (len(lessons) * lesson_height) + (unique_days * day_header_h) + 100
+    total_height = max(600, total_height)
+
+    # Цвета (Строгий современный стиль)
+    bg_color = (245, 247, 250)
+    accent_color = (33, 150, 243) # Blue
+    text_dark = (40, 44, 52)
+    text_muted = (120, 124, 135)
+    card_bg = (255, 255, 255)
+    
+    img = Image.new("RGB", (width, total_height), bg_color)
+    draw = ImageDraw.Draw(img)
+    
+    font_lg = load_safe_font(44, True)
+    font_md_b = load_safe_font(28, True)
+    font_md = load_safe_font(28)
+    font_sm = load_safe_font(22)
+    font_xs = load_safe_font(18)
+
+    # Header
+    draw.rectangle([(0, 0), (width, header_h)], fill=accent_color)
+    draw.text((width // 2, 70), "РАСПИСАНИЕ ЗАНЯТИЙ", fill="white", font=font_lg, anchor="mm")
+    draw.text((width // 2, 130), f"Всего занятий: {len(lessons)}", fill="white", font=font_md, anchor="mm")
+
+    y = header_h + 30
+    current_date = None
     days_ru = {"MONDAY": "ПОНЕДЕЛЬНИК", "TUESDAY": "ВТОРНИК", "WEDNESDAY": "СРЕДА", 
                "THURSDAY": "ЧЕТВЕРГ", "FRIDAY": "ПЯТНИЦА", "SATURDAY": "СУББОТА", "SUNDAY": "ВОСКРЕСЕНЬЕ"}
-    
+
     for lesson in sorted_lessons:
-        msk_dt = datetime.fromisoformat(lesson["from"].replace('Z', '')) + timedelta(hours=3)
+        msk_dt = get_datetime_from_utc_msk(lesson["from"])
         date_str = msk_dt.strftime("%d.%m.%Y")
-        day_name = days_ru.get(msk_dt.strftime("%A").upper(), msk_dt.strftime("%A").upper())
         
-        if date_str not in days_data:
-            days_data[date_str] = {"name": day_name, "lessons": []}
-        
-        days_data[date_str]["lessons"].append({
-            "time": f"{convert_utc_to_msk(lesson['from'])} - {convert_utc_to_msk(lesson['to'])}",
-            "discipline": lesson["discipline"]["name"],
-            "classroom": lesson['classroom']['name'] if lesson.get('classroom') else "Не указано",
-            "group": lesson['learningGroup']['name'] if lesson.get('learningGroup') else "Не указано",
-            "online": lesson.get("isOnline", False)
-        })
+        if date_str != current_date:
+            current_date = date_str
+            day_name = days_ru.get(msk_dt.strftime("%A").upper(), msk_dt.strftime("%A").upper())
+            y += 20
+            draw.text((60, y), f"{day_name} • {date_str}", fill=text_dark, font=font_md_b)
+            draw.line([(60, y + 40), (width - 60, y + 40)], fill=accent_color, width=2)
+            y += 60
 
-    # HTML Шаблон с использованием Google Fonts (Comic Neue и Noto Sans)
-    html_template = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
-        <style>
-            body {
-                font-family: 'Comic Neue', 'Noto Sans', sans-serif;
-                background-color: #f0f2f5;
-                margin: 0;
-                padding: 40px;
-                width: 1000px;
-            }
-            .header {
-                background-color: #2196f3;
-                color: white;
-                padding: 40px;
-                text-align: center;
-                border-radius: 15px 15px 0 0;
-                margin-bottom: 30px;
-            }
-            .header h1 { margin: 0; font-size: 48px; text-transform: uppercase; }
-            .header p { margin: 10px 0 0; font-size: 24px; opacity: 0.9; }
-            
-            .day-section { margin-bottom: 40px; }
-            .day-title {
-                font-size: 32px;
-                font-weight: bold;
-                color: #333;
-                border-bottom: 3px solid #2196f3;
-                padding-bottom: 10px;
-                margin-bottom: 20px;
-            }
-            
-            .card {
-                background: white;
-                border-left: 10px solid #2196f3;
-                margin-bottom: 15px;
-                padding: 20px;
-                display: flex;
-                align-items: center;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }
-            .time-box {
-                min-width: 180px;
-                font-size: 28px;
-                font-weight: bold;
-                color: #2196f3;
-            }
-            .info-box {
-                flex-grow: 1;
-                padding-left: 30px;
-            }
-            .discipline { font-size: 30px; font-weight: bold; color: #222; margin-bottom: 5px; }
-            .details { font-size: 22px; color: #666; }
-            
-            .status-tag {
-                padding: 8px 15px;
-                border: 2px solid #2196f3;
-                color: #2196f3;
-                font-weight: bold;
-                border-radius: 5px;
-                font-size: 18px;
-                text-transform: uppercase;
-            }
-            .footer {
-                text-align: center;
-                color: #888;
-                font-size: 18px;
-                margin-top: 50px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <h1>РАСПИСАНИЕ ЗАНЯТИЙ</h1>
-            <p>Всего занятий: {{total_lessons}}</p>
-        </div>
-        
-        {% for date, data in days.items() %}
-        <div class="day-section">
-            <div class="day-title">{{data.name}} • {{date}}</div>
-            {% for lesson in data.lessons %}
-            <div class="card">
-                <div class="time-box">{{lesson.time}}</div>
-                <div class="info-box">
-                    <div class="discipline">{{lesson.discipline}}</div>
-                    <div class="details">Ауд: {{lesson.classroom}} | Группа: {{lesson.group}}</div>
-                </div>
-                <div class="status-tag">{% if lesson.online %}ОНЛАЙН{% else %}ОЧНО{% endif %}</div>
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-        
-        <div class="footer">
-            LXP Бот • {{now}}
-        </div>
-    </body>
-    </html>
-    """
-    
-    # Простая замена шаблона (без Jinja2 для минимизации зависимостей)
-    html = html_template.replace("{{total_lessons}}", str(len(lessons)))
-    html = html.replace("{{now}}", datetime.now().strftime('%d.%m.%Y %H:%M'))
-    
-    days_html = ""
-    for date, data in days_data.items():
-        day_html = f'<div class="day-section"><div class="day-title">{data["name"]} • {date}</div>'
-        for lesson in data["lessons"]:
-            status = "ОНЛАЙН" if lesson["online"] else "ОЧНО"
-            day_html += f"""
-            <div class="card">
-                <div class="time-box">{lesson['time']}</div>
-                <div class="info-box">
-                    <div class="discipline">{lesson['discipline']}</div>
-                    <div class="details">Ауд: {lesson['classroom']} | Группа: {lesson['group']}</div>
-                </div>
-                <div class="status-tag">{status}</div>
-            </div>
-            """
-        day_html += "</div>"
-        days_html += day_html
-    
-    html = html.replace("{% for date, data in days.items() %}", "").replace("{% endfor %}", "")
-    html = html.replace("{% for lesson in data.lessons %}", "").replace("{% if lesson.online %}ОНЛАЙН{% else %}ОЧНО{% endif %}", "")
-    # На самом деле проще было переписать логику вставки, что я и сделал выше
-    
-    # Финальная сборка HTML
-    final_html = html_template.split('{% for date, data in days.items() %}')[0] + days_html + html_template.split('{% endfor %}')[-1]
-    final_html = final_html.replace("{{total_lessons}}", str(len(lessons))).replace("{{now}}", datetime.now().strftime('%d.%m.%Y %H:%M'))
+        # Card
+        x1, y1 = 60, y
+        x2, y2 = width - 60, y + 120
+        draw.rectangle([(x1, y1), (x2, y2)], fill=card_bg, outline=(220, 220, 220), width=1)
+        draw.rectangle([(x1, y1), (x1 + 8, y2)], fill=accent_color) # Боковая полоса
 
-    options = {
-        'format': 'png',
-        'encoding': "UTF-8",
-        'quiet': '',
-        'enable-local-file-access': '',
-        'width': 1080
-    }
-    
-    output_path = "schedule_temp.png"
-    try:
-        if config:
-            imgkit.from_string(final_html, output_path, options=options, config=config)
-        else:
-            imgkit.from_string(final_html, output_path, options=options)
-        
-        with open(output_path, "rb") as f:
-            img_bytes = f.read()
-        os.remove(output_path)
-        return img_bytes
-    except Exception as e:
-        print(f"IMGKit error, falling back to simple text: {e}")
-        # Если даже HTML не сработал (нет программы), возвращаем текст ошибки как картинку или уведомление
-        from PIL import Image, ImageDraw
-        img = Image.new('RGB', (800, 200), color=(73, 109, 137))
-        d = ImageDraw.Draw(img)
-        d.text((10,10), f"Error: Install wkhtmltopdf\nor check PATH", fill=(255,255,0))
-        from io import BytesIO
-        b = BytesIO()
-        img.save(b, format='PNG')
-        return b.getvalue()
+        # Time
+        time_str = f"{convert_utc_to_msk(lesson['from'])} - {convert_utc_to_msk(lesson['to'])}"
+        draw.text((x1 + 30, y1 + 35), time_str, fill=accent_color, font=font_md_b)
+
+        # Info
+        discipline = lesson["discipline"]["name"]
+        lines = textwrap.wrap(discipline, width=40)
+        for i, line in enumerate(lines[:2]):
+            draw.text((x1 + 250, y1 + 25 + i * 35), line, fill=text_dark, font=font_md)
+
+        classroom = lesson['classroom']['name'] if lesson.get('classroom') else "???"
+        group = lesson['learningGroup']['name'] if lesson.get('learningGroup') else "???"
+        draw.text((x1 + 250, y1 + 85), f"Ауд: {classroom}  |  Группа: {group}", fill=text_muted, font=font_sm)
+
+        # Status
+        status = "ОНЛАЙН" if lesson.get("isOnline") else "ОЧНО"
+        draw.rectangle([(x2 - 130, y1 + 40), (x2 - 30, y1 + 80)], outline=accent_color, width=2)
+        draw.text((x2 - 80, y1 + 60), status, fill=accent_color, font=font_xs, anchor="mm")
+
+        y += lesson_height
+
+    # Footer
+    draw.text((width // 2, total_height - 40), f"LXP Бот • {datetime.now().strftime('%d.%m.%Y %H:%M')}", fill=text_muted, font=font_xs, anchor="mm")
+
+    img_bytes = BytesIO()
+    img.save(img_bytes, format="PNG")
+    img_bytes.seek(0)
+    return img_bytes.getvalue()
 
 @schedulerlist.callback_query(F.data == 'schedule')
 async def get_scheduler_lists(call: CallbackQuery):
