@@ -2,9 +2,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, BufferedIn
 from aiogram.types import Message, CallbackQuery
 from aiogram import Router, F
 from datetime import datetime, timedelta
-from io import BytesIO
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
-import textwrap
+import imgkit
 import os
 
 # Импорт функции из api/get_scheduler
@@ -31,152 +29,179 @@ def get_date_from_utc_msk(utc_time_str):
     except:
         return datetime.now().date()
 
-def get_datetime_from_utc_msk(utc_time_str):
-    try:
-        utc_time = datetime.fromisoformat(utc_time_str.replace('Z', ''))
-        return utc_time + timedelta(hours=3)
-    except:
-        return datetime.now()
-
-def load_fonts():
-    # Приоритет Noto Sans для гарантированной кириллицы (кубиков не будет)
-    font_path = "/home/ubuntu/LXPBOT/assets/fonts/noto.ttf"
-    font_bold_path = "/home/ubuntu/LXPBOT/assets/fonts/noto-bold.ttf"
-    
-    # Запасной вариант - Comic Neue
-    alt_font_path = "/home/ubuntu/LXPBOT/assets/fonts/comic.ttf"
-    alt_font_bold_path = "/home/ubuntu/LXPBOT/assets/fonts/comic-bold.ttf"
-    
-    def get_font(path, size, alt_path=None):
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size)
-        if alt_path and os.path.exists(alt_path):
-            return ImageFont.truetype(alt_path, size)
-        return ImageFont.load_default()
-
-    try:
-        font_large = get_font(font_bold_path, 48, alt_font_bold_path)
-        font_medium_bold = get_font(font_bold_path, 32, alt_font_bold_path)
-        font_medium = get_font(font_path, 32, alt_font_path)
-        font_small = get_font(font_path, 24, alt_font_path)
-        font_tiny = get_font(font_path, 20, alt_font_path)
-    except Exception as e:
-        print(f"Font loading error: {e}")
-        font_large = font_medium = font_medium_bold = font_small = font_tiny = ImageFont.load_default()
-            
-    except Exception as e:
-        print(f"Font loading error: {e}")
-        font_large = ImageFont.load_default()
-        font_medium = ImageFont.load_default()
-        font_medium_bold = ImageFont.load_default()
-        font_small = ImageFont.load_default()
-        font_tiny = ImageFont.load_default()
-        
-    return font_large, font_medium, font_medium_bold, font_small, font_tiny
-
 def create_schedule_image(lessons):
-    width = 1200
-    header_h = 200
-    lesson_height = 160
-    day_header_h = 80
-    
     sorted_lessons = sorted(lessons, key=lambda x: x["from"])
     
-    # Считаем количество уникальных дней
-    unique_days = len(set(get_date_from_utc_msk(l["from"]) for l in sorted_lessons))
+    # Группировка по дням
+    days_data = {}
+    days_ru = {"MONDAY": "ПОНЕДЕЛЬНИК", "TUESDAY": "ВТОРНИК", "WEDNESDAY": "СРЕДА", 
+               "THURSDAY": "ЧЕТВЕРГ", "FRIDAY": "ПЯТНИЦА", "SATURDAY": "СУББОТА", "SUNDAY": "ВОСКРЕСЕНЬЕ"}
     
-    total_height = header_h + (len(lessons) * lesson_height) + (unique_days * day_header_h) + 100
-    total_height = max(800, total_height)
+    for lesson in sorted_lessons:
+        msk_dt = datetime.fromisoformat(lesson["from"].replace('Z', '')) + timedelta(hours=3)
+        date_str = msk_dt.strftime("%d.%m.%Y")
+        day_name = days_ru.get(msk_dt.strftime("%A").upper(), msk_dt.strftime("%A").upper())
+        
+        if date_str not in days_data:
+            days_data[date_str] = {"name": day_name, "lessons": []}
+        
+        days_data[date_str]["lessons"].append({
+            "time": f"{convert_utc_to_msk(lesson['from'])} - {convert_utc_to_msk(lesson['to'])}",
+            "discipline": lesson["discipline"]["name"],
+            "classroom": lesson['classroom']['name'] if lesson.get('classroom') else "Не указано",
+            "group": lesson['learningGroup']['name'] if lesson.get('learningGroup') else "Не указано",
+            "online": lesson.get("isOnline", False)
+        })
 
-    # Цветовая палитра (Строгий современный дизайн)
-    bg_color = (240, 242, 245) # Светло-серый фон
-    accent_color = (33, 150, 243) # Blue
-    text_dark = (33, 37, 41) # Почти черный
-    text_muted = (108, 117, 125) # Серый текст
-    card_bg = (255, 255, 255)
+    # HTML Шаблон с использованием Google Fonts (Comic Neue и Noto Sans)
+    html_template = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+            body {
+                font-family: 'Comic Neue', 'Noto Sans', sans-serif;
+                background-color: #f0f2f5;
+                margin: 0;
+                padding: 40px;
+                width: 1000px;
+            }
+            .header {
+                background-color: #2196f3;
+                color: white;
+                padding: 40px;
+                text-align: center;
+                border-radius: 15px 15px 0 0;
+                margin-bottom: 30px;
+            }
+            .header h1 { margin: 0; font-size: 48px; text-transform: uppercase; }
+            .header p { margin: 10px 0 0; font-size: 24px; opacity: 0.9; }
+            
+            .day-section { margin-bottom: 40px; }
+            .day-title {
+                font-size: 32px;
+                font-weight: bold;
+                color: #333;
+                border-bottom: 3px solid #2196f3;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }
+            
+            .card {
+                background: white;
+                border-left: 10px solid #2196f3;
+                margin-bottom: 15px;
+                padding: 20px;
+                display: flex;
+                align-items: center;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            .time-box {
+                min-width: 180px;
+                font-size: 28px;
+                font-weight: bold;
+                color: #2196f3;
+            }
+            .info-box {
+                flex-grow: 1;
+                padding-left: 30px;
+            }
+            .discipline { font-size: 30px; font-weight: bold; color: #222; margin-bottom: 5px; }
+            .details { font-size: 22px; color: #666; }
+            
+            .status-tag {
+                padding: 8px 15px;
+                border: 2px solid #2196f3;
+                color: #2196f3;
+                font-weight: bold;
+                border-radius: 5px;
+                font-size: 18px;
+                text-transform: uppercase;
+            }
+            .footer {
+                text-align: center;
+                color: #888;
+                font-size: 18px;
+                margin-top: 50px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>РАСПИСАНИЕ ЗАНЯТИЙ</h1>
+            <p>Всего занятий: {{total_lessons}}</p>
+        </div>
+        
+        {% for date, data in days.items() %}
+        <div class="day-section">
+            <div class="day-title">{{data.name}} • {{date}}</div>
+            {% for lesson in data.lessons %}
+            <div class="card">
+                <div class="time-box">{{lesson.time}}</div>
+                <div class="info-box">
+                    <div class="discipline">{{lesson.discipline}}</div>
+                    <div class="details">Ауд: {{lesson.classroom}} | Группа: {{lesson.group}}</div>
+                </div>
+                <div class="status-tag">{% if lesson.online %}ОНЛАЙН{% else %}ОЧНО{% endif %}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        
+        <div class="footer">
+            LXP Бот • {{now}}
+        </div>
+    </body>
+    </html>
+    """
     
-    img = Image.new("RGB", (width, total_height), bg_color)
-    draw = ImageDraw.Draw(img)
-    font_large, font_medium, font_medium_bold, font_small, font_tiny = load_fonts()
-
-    # ===== HEADER =====
-    draw.rectangle([(0, 0), (width, header_h)], fill=accent_color)
-
-    title = "РАСПИСАНИЕ ЗАНЯТИЙ"
-    draw.text((width // 2, 80), title, fill="white", font=font_large, anchor="mm")
+    # Простая замена шаблона (без Jinja2 для минимизации зависимостей)
+    html = html_template.replace("{{total_lessons}}", str(len(lessons)))
+    html = html.replace("{{now}}", datetime.now().strftime('%d.%m.%Y %H:%M'))
     
-    stats = f"Всего занятий: {len(lessons)}"
-    draw.text((width // 2, 140), stats, fill="white", font=font_medium, anchor="mm")
+    days_html = ""
+    for date, data in days_data.items():
+        day_html = f'<div class="day-section"><div class="day-title">{data["name"]} • {date}</div>'
+        for lesson in data["lessons"]:
+            status = "ОНЛАЙН" if lesson["online"] else "ОЧНО"
+            day_html += f"""
+            <div class="card">
+                <div class="time-box">{lesson['time']}</div>
+                <div class="info-box">
+                    <div class="discipline">{lesson['discipline']}</div>
+                    <div class="details">Ауд: {lesson['classroom']} | Группа: {lesson['group']}</div>
+                </div>
+                <div class="status-tag">{status}</div>
+            </div>
+            """
+        day_html += "</div>"
+        days_html += day_html
+    
+    html = html.replace("{% for date, data in days.items() %}", "").replace("{% endfor %}", "")
+    html = html.replace("{% for lesson in data.lessons %}", "").replace("{% if lesson.online %}ОНЛАЙН{% else %}ОЧНО{% endif %}", "")
+    # На самом деле проще было переписать логику вставки, что я и сделал выше
+    
+    # Финальная сборка HTML
+    final_html = html_template.split('{% for date, data in days.items() %}')[0] + days_html + html_template.split('{% endfor %}')[-1]
+    final_html = final_html.replace("{{total_lessons}}", str(len(lessons))).replace("{{now}}", datetime.now().strftime('%d.%m.%Y %H:%M'))
 
-    # ===== CONTENT =====
-    y = header_h + 40
-    current_date = None
-
-    for i, lesson in enumerate(sorted_lessons, 1):
-        msk_datetime = get_datetime_from_utc_msk(lesson["from"])
-        date_str = msk_datetime.strftime("%d.%m.%Y")
-        day_name = msk_datetime.strftime("%A").upper()
-        
-        # Перевод дней недели
-        days_ru = {"MONDAY": "ПОНЕДЕЛЬНИК", "TUESDAY": "ВТОРНИК", "WEDNESDAY": "СРЕДА", 
-                   "THURSDAY": "ЧЕТВЕРГ", "FRIDAY": "ПЯТНИЦА", "SATURDAY": "СУББОТА", "SUNDAY": "ВОСКРЕСЕНЬЕ"}
-        day_name_ru = days_ru.get(day_name, day_name)
-
-        # ===== DATE BLOCK =====
-        if date_str != current_date:
-            current_date = date_str
-            y += 20
-            draw.text((80, y), f"{day_name_ru} • {date_str}", fill=text_dark, font=font_medium_bold)
-            draw.line([(80, y + 45), (width - 80, y + 45)], fill=accent_color, width=2)
-            y += 70
-
-        # ===== CARD =====
-        card_margin = 80
-        card_x1, card_y1 = card_margin, y
-        card_x2, card_y2 = width - card_margin, y + 140
-
-        # Сама карточка (без теней, строгий стиль)
-        draw.rectangle([(card_x1, card_y1), (card_x2, card_y2)], fill=card_bg, outline=(222, 226, 230), width=1)
-
-        # Время
-        time_start = convert_utc_to_msk(lesson['from'])
-        time_end = convert_utc_to_msk(lesson['to'])
-        
-        # Боковая полоска акцента
-        draw.rectangle([(card_x1, card_y1), (card_x1 + 10, card_y2)], fill=accent_color)
-        
-        draw.text((card_x1 + 40, card_y1 + 40), f"{time_start} - {time_end}", fill=accent_color, font=font_medium_bold)
-
-        # Информация о занятии
-        text_x = card_x1 + 300
-        discipline = lesson["discipline"]["name"]
-        lines = textwrap.wrap(discipline, width=45)
-        
-        for j, line in enumerate(lines[:2]):
-            draw.text((text_x, card_y1 + 30 + j * 40), line, fill=text_dark, font=font_medium)
-
-        classroom = lesson['classroom']['name'] if lesson.get('classroom') else "Не указано"
-        group = lesson['learningGroup']['name'] if lesson.get('learningGroup') else "Не указано"
-        details = f"Ауд: {classroom}  |  Группа: {group}"
-        draw.text((text_x, card_y1 + 100), details, fill=text_muted, font=font_small)
-
-        # Тип (Онлайн/Очно)
-        is_online = lesson.get("isOnline", False)
-        status_text = "ОНЛАЙН" if is_online else "ОЧНО"
-        
-        status_w = 120
-        draw.rectangle([(card_x2 - status_w - 40, card_y1 + 45), (card_x2 - 40, card_y1 + 95)], outline=accent_color, width=2)
-        draw.text((card_x2 - (status_w//2) - 40, card_y1 + 70), status_text, fill=accent_color, font=font_small, anchor="mm")
-
-        y += lesson_height
-
-    # ===== FOOTER =====
-    footer_y = total_height - 50
-    draw.text((width // 2, footer_y), f"LXP Бот • {datetime.now().strftime('%d.%m.%Y %H:%M')}", fill=text_muted, font=font_tiny, anchor="mm")
-
-    img_bytes = BytesIO()
-    img.save(img_bytes, format="PNG")
-    img_bytes.seek(0)
+    options = {
+        'format': 'png',
+        'encoding': "UTF-8",
+        'quiet': '',
+        'enable-local-file-access': '',
+        'width': 1080
+    }
+    
+    output_path = "schedule_temp.png"
+    imgkit.from_string(final_html, output_path, options=options)
+    
+    with open(output_path, "rb") as f:
+        img_bytes = f.read()
+    
+    os.remove(output_path)
     return img_bytes
 
 @schedulerlist.callback_query(F.data == 'schedule')
@@ -248,7 +273,6 @@ async def show_today_schedule(call: CallbackQuery):
             else:
                 await call.answer()
     except Exception as e:
-        print(f"Error updating schedule message: {e}")
         await call.message.answer(text, parse_mode="HTML", reply_markup=keyboard, disable_web_page_preview=True)
 
 @schedulerlist.callback_query(F.data == "schedule_full")
@@ -264,7 +288,7 @@ async def show_full_schedule(call: CallbackQuery):
     
     await call.message.delete()
     await call.message.answer_photo(
-        BufferedInputFile(img_bytes.getvalue(), filename="schedule.png"),
+        BufferedInputFile(img_bytes, filename="schedule.png"),
         caption="📊 Ваше актуальное расписание",
         reply_markup=keyboard
     )
