@@ -30,6 +30,18 @@ def get_date_from_utc_msk(utc_time_str):
         return datetime.now().date()
 
 def create_schedule_image(lessons):
+    # Пытаемся настроить путь для Windows, если wkhtmltoimage не в PATH
+    config = None
+    if os.name == 'nt':  # Если запуск на Windows
+        paths = [
+            r'C:\Program Files\wkhtmltopdf\bin\wkhtmltoimage.exe',
+            r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltoimage.exe'
+        ]
+        for path in paths:
+            if os.path.exists(path):
+                config = imgkit.config(wkhtmltoimage=path)
+                break
+    
     sorted_lessons = sorted(lessons, key=lambda x: x["from"])
     
     # Группировка по дням
@@ -196,13 +208,27 @@ def create_schedule_image(lessons):
     }
     
     output_path = "schedule_temp.png"
-    imgkit.from_string(final_html, output_path, options=options)
-    
-    with open(output_path, "rb") as f:
-        img_bytes = f.read()
-    
-    os.remove(output_path)
-    return img_bytes
+    try:
+        if config:
+            imgkit.from_string(final_html, output_path, options=options, config=config)
+        else:
+            imgkit.from_string(final_html, output_path, options=options)
+        
+        with open(output_path, "rb") as f:
+            img_bytes = f.read()
+        os.remove(output_path)
+        return img_bytes
+    except Exception as e:
+        print(f"IMGKit error, falling back to simple text: {e}")
+        # Если даже HTML не сработал (нет программы), возвращаем текст ошибки как картинку или уведомление
+        from PIL import Image, ImageDraw
+        img = Image.new('RGB', (800, 200), color=(73, 109, 137))
+        d = ImageDraw.Draw(img)
+        d.text((10,10), f"Error: Install wkhtmltopdf\nor check PATH", fill=(255,255,0))
+        from io import BytesIO
+        b = BytesIO()
+        img.save(b, format='PNG')
+        return b.getvalue()
 
 @schedulerlist.callback_query(F.data == 'schedule')
 async def get_scheduler_lists(call: CallbackQuery):
