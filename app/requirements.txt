@@ -1,5 +1,5 @@
 aiogram
 uvicorn
 pillow
-tortoise[orm]
+tortoise-orm
 requests
