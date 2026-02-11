@@ -8,8 +8,8 @@ import textwrap
 import os
 
 # Импорт функции из api/get_scheduler
-from app.api.get_scheduler import get_schedule
-from app.db.models import User
+from api.get_scheduler import get_schedule
+from db.models import User
 
 schedulerlist = Router()
 

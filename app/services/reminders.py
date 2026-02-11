@@ -16,7 +16,7 @@ def init_reminder_service(bot):
 async def get_user_tasks_from_api(user):
     """Получает задания пользователя через API"""
     try:
-        from app.api.get_scheduler import get_tasks as api_get_tasks
+        from api.get_scheduler import get_tasks as api_get_tasks
         return await api_get_tasks(user.email, user.password, user.telegram_id)
     except Exception as e:
         logger.error(f"Ошибка получения заданий для пользователя {user.id}: {e}")
@@ -63,7 +63,7 @@ async def send_reminder(telegram_id: int, task: dict, reminder_type: str):
 async def send_reminder_if_needed(user, task, reminder_type):
     """Отправляет напоминание если еще не отправляли"""
     try:
-        from app.db.models import SentReminder
+        from db.models import SentReminder
         
         # В API LXPBOT ID задания находится в task["contentBlock"]["id"]
         task_id = str(task.get("contentBlock", {}).get("id") or task.get("id"))
@@ -101,8 +101,8 @@ async def check_deadlines():
         try:
             logger.debug(f"🔍 Проверяю дедлайны... {datetime.now()}")
             
-            from app.db.models import User
-            from app.db.utils import get_user_settings
+            from db.models import User
+            from db.utils import get_user_settings
             
             users = await User.all()
             

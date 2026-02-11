@@ -1,0 +1,89 @@
+2026-02-11 13:00:34 - aiogram.dispatcher - INFO - Start polling
+2026-02-11 13:00:35 - aiogram.dispatcher - INFO - Run polling for bot @mangareaaderbot id=8407287434 - 'LXP | Helper'
+2026-02-11 13:00:35 - aiogram.event - INFO - Update id=820671095 is handled. Duration 687 ms by bot id=8407287434
+2026-02-11 13:00:46 - aiogram.event - INFO - Update id=820671096 is handled. Duration 218 ms by bot id=8407287434
+2026-02-11 13:00:55 - aiogram.event - INFO - Update id=820671097 is handled. Duration 437 ms by bot id=8407287434
+2026-02-11 13:00:57 - aiogram.event - INFO - Update id=820671098 is handled. Duration 218 ms by bot id=8407287434
+2026-02-11 13:00:58 - aiogram.event - INFO - Update id=820671099 is handled. Duration 202 ms by bot id=8407287434
+2026-02-11 13:01:41 - aiogram.event - INFO - Update id=820671100 is not handled. Duration 312 ms by bot id=8407287434
+2026-02-11 13:01:41 - aiogram.event - ERROR - Cause exception while process update id=820671100 by bot id=8407287434
+TypeError: 'NoneType' object is not subscriptable
+Traceback (most recent call last):
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\dispatcher.py", line 320, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\dispatcher.py", line 164, in feed_update
+    response = await self.update.wrap_outer_middleware(
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 27, in __call__
+    return await handler(event, data)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 58, in __call__
+    return await handler(event, data)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\fsm\middleware.py", line 43, in __call__
+    return await handler(event, data)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\dispatcher.py", line 283, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\router.py", line 161, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+  File "c:\Users\euphoria\Desktop\LXPBOT\app\handlers\admin.py", line 120, in maintenance_middleware
+    return await handler(event, data)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\router.py", line 153, in _wrapped
+    return await self._propagate_event(
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\router.py", line 189, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\router.py", line 161, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\router.py", line 153, in _wrapped
+    return await self._propagate_event(
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\router.py", line 181, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+  File "C:\Users\euphoria\AppData\Local\Programs\Python\Python310\lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+  File "c:\Users\euphoria\Desktop\LXPBOT\app\handlers\start.py", line 109, in process_form
+    await add_to_data(email, password, message.from_user.id)
+  File "c:\Users\euphoria\Desktop\LXPBOT\app\api\get_scheduler.py", line 223, in add_to_data
+    token = login(email, password)
+  File "c:\Users\euphoria\Desktop\LXPBOT\app\api\get_scheduler.py", line 220, in login
+    return login_resp.json()["data"]["signIn"]["accessToken"]
+TypeError: 'NoneType' object is not subscriptable
+2026-02-11 13:02:20 - aiogram.event - INFO - Update id=820671101 is handled. Duration 1233 ms by bot id=8407287434
+2026-02-11 13:02:23 - aiogram.event - INFO - Update id=820671102 is handled. Duration 1297 ms by bot id=8407287434
+2026-02-11 13:02:39 - aiogram.event - INFO - Update id=820671103 is handled. Duration 9218 ms by bot id=8407287434
+2026-02-11 13:02:42 - aiogram.event - INFO - Update id=820671104 is handled. Duration 1797 ms by bot id=8407287434
+2026-02-11 13:02:51 - aiogram.event - INFO - Update id=820671105 is handled. Duration 2468 ms by bot id=8407287434
+2026-02-11 13:02:53 - aiogram.event - INFO - Update id=820671106 is handled. Duration 328 ms by bot id=8407287434
+2026-02-11 13:02:57 - aiogram.event - INFO - Update id=820671107 is handled. Duration 1468 ms by bot id=8407287434
+2026-02-11 13:26:51 - aiogram.event - INFO - Update id=820671108 is handled. Duration 1437 ms by bot id=8407287434
+2026-02-11 13:26:58 - aiogram.event - INFO - Update id=820671109 is handled. Duration 860 ms by bot id=8407287434
+2026-02-11 13:27:01 - aiogram.event - INFO - Update id=820671110 is handled. Duration 812 ms by bot id=8407287434
+2026-02-11 13:27:04 - aiogram.event - INFO - Update id=820671111 is handled. Duration 875 ms by bot id=8407287434
+2026-02-11 13:27:06 - aiogram.event - INFO - Update id=820671112 is handled. Duration 531 ms by bot id=8407287434
+2026-02-11 13:27:08 - aiogram.event - INFO - Update id=820671113 is handled. Duration 125 ms by bot id=8407287434
+2026-02-11 13:27:10 - aiogram.event - INFO - Update id=820671114 is handled. Duration 344 ms by bot id=8407287434
+2026-02-11 13:27:26 - aiogram.event - INFO - Update id=820671115 is handled. Duration 375 ms by bot id=8407287434
+2026-02-11 13:34:28 - aiogram.event - INFO - Update id=820671116 is handled. Duration 546 ms by bot id=8407287434
+2026-02-11 13:34:30 - aiogram.event - INFO - Update id=820671117 is handled. Duration 968 ms by bot id=8407287434
+2026-02-11 13:34:32 - aiogram.event - INFO - Update id=820671118 is handled. Duration 328 ms by bot id=8407287434
+2026-02-11 13:34:34 - aiogram.event - INFO - Update id=820671119 is handled. Duration 328 ms by bot id=8407287434
+2026-02-11 13:34:35 - aiogram.event - INFO - Update id=820671120 is handled. Duration 172 ms by bot id=8407287434
+2026-02-11 13:34:40 - aiogram.event - INFO - Update id=820671121 is handled. Duration 235 ms by bot id=8407287434
+2026-02-11 13:34:41 - aiogram.event - INFO - Update id=820671122 is handled. Duration 234 ms by bot id=8407287434
+2026-02-11 13:34:43 - aiogram.event - INFO - Update id=820671123 is handled. Duration 828 ms by bot id=8407287434
+2026-02-11 13:35:01 - aiogram.event - INFO - Update id=820671124 is handled. Duration 608 ms by bot id=8407287434
+2026-02-11 13:35:03 - aiogram.event - INFO - Update id=820671125 is handled. Duration 312 ms by bot id=8407287434
+2026-02-11 13:35:06 - aiogram.event - INFO - Update id=820671126 is handled. Duration 281 ms by bot id=8407287434
+2026-02-11 13:35:08 - aiogram.event - INFO - Update id=820671127 is handled. Duration 218 ms by bot id=8407287434
+2026-02-11 13:35:18 - aiogram.event - INFO - Update id=820671128 is handled. Duration 547 ms by bot id=8407287434
+2026-02-11 13:35:20 - aiogram.event - INFO - Update id=820671129 is handled. Duration 202 ms by bot id=8407287434
+2026-02-11 13:40:42 - aiogram.dispatcher - INFO - Polling stopped
+2026-02-11 13:40:42 - aiogram.dispatcher - INFO - Polling stopped for bot @mangareaaderbot id=8407287434 - 'LXP | Helper'
+2026-02-11 13:40:42 - tortoise - INFO - Tortoise-ORM shutdown
+2026-02-11 13:40:49 - aiogram.dispatcher - INFO - Start polling
+2026-02-11 13:40:50 - aiogram.dispatcher - INFO - Run polling for bot @mangareaaderbot id=8407287434 - 'LXP | Helper'
+2026-02-11 13:50:23 - aiogram.dispatcher - INFO - Polling stopped
+2026-02-11 13:50:24 - aiogram.dispatcher - INFO - Polling stopped for bot @mangareaaderbot id=8407287434 - 'LXP | Helper'
+2026-02-11 13:50:24 - tortoise - INFO - Tortoise-ORM shutdown
