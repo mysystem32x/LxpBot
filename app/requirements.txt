@@ -1,0 +1,5 @@
+aiogram
+uvicorn
+pillow
+tortoise[orm]
+requests
