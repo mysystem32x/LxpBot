@@ -4,6 +4,5 @@ pillow
 tortoise-orm
 requests
 pytz
-asyncpg==0.29.0        
 apscheduler==3.10.4
 aiofiles==24.1.0
