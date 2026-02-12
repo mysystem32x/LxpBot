@@ -26,10 +26,6 @@ if not TOKEN:
 # НАСТРОЙКА БАЗЫ ДАННЫХ (PostgreSQL для Render)
 # ============================================
 
-if not DATABASE_URL:
-    # Локально используем SQLite
-    DATABASE_URL = 'sqlite://db.sqlite3'
-    logging.warning("⚠️ DATABASE_URL не найден, используем SQLite")
 
 async def init_db():
     """Инициализация базы данных"""
