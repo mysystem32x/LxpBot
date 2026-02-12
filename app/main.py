@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from aiogram import Bot, Dispatcher
 from tortoise import Tortoise
 
@@ -14,16 +15,30 @@ from handlers.admin import admin_router, maintenance_middleware
 # Импорт сервиса напоминаний
 from services.reminders import init_reminder_service, check_deadlines
 
+# ============================================
+# БЕРЁМ ТОКЕН ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ!
+# ============================================
 TOKEN = "8407287434:AAHGLrMvurhEHE456sNVKnZZ_bd_6XKzRyo"
+if not TOKEN:
+    raise ValueError("❌ BOT_TOKEN не найден в переменных окружения!")
+
+# ============================================
+# НАСТРОЙКА БАЗЫ ДАННЫХ (PostgreSQL для Render)
+# ============================================
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if not DATABASE_URL:
+    # Локально используем SQLite
+    DATABASE_URL = 'sqlite://db.sqlite3'
+    logging.warning("⚠️ DATABASE_URL не найден, используем SQLite")
 
 async def init_db():
     """Инициализация базы данных"""
     await Tortoise.init(
-        db_url='sqlite://db.sqlite3',
+        db_url=DATABASE_URL,
         modules={'models': ['db.models']}
     )
     await Tortoise.generate_schemas()
-    logging.info("✅ База данных инициализирована")
+    logging.info(f"✅ База данных инициализирована: {DATABASE_URL.split('://')[0]}")
 
 async def close_db():
     """Закрытие соединений с БД"""
@@ -54,7 +69,7 @@ async def main():
     init_reminder_service(bot)
     
     # Регистрируем роутеры
-    dp.include_router(admin_router) # Админка первой
+    dp.include_router(admin_router)
     dp.include_router(starter)
     dp.include_router(leave)
     dp.include_router(schedulerlist)
@@ -81,14 +96,13 @@ async def main():
         await close_db()
 
 if __name__ == "__main__":
-    # Настраиваем логирование в файл для админки
+    # Настраиваем логирование
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
-            logging.FileHandler("bot.log"),
-            logging.StreamHandler()
+            logging.StreamHandler(),  # Только в консоль (Render сам сохранит логи)
         ]
     )
     
