@@ -25,7 +25,7 @@ if not TOKEN:
 # ============================================
 # НАСТРОЙКА БАЗЫ ДАННЫХ (PostgreSQL для Render)
 # ============================================
-DATABASE_URL = os.environ.get('DATABASE_URL')
+
 if not DATABASE_URL:
     # Локально используем SQLite
     DATABASE_URL = 'sqlite://db.sqlite3'
@@ -34,9 +34,9 @@ if not DATABASE_URL:
 async def init_db():
     """Инициализация базы данных"""
     await Tortoise.init(
-        db_url=DATABASE_URL,
-        modules={'models': ['db.models']}
-    )
+            db_url='sqlite://db.sqlite3',
+            modules={'models': ['db.models']}
+        )
     await Tortoise.generate_schemas()
     logging.info(f"✅ База данных инициализирована: {DATABASE_URL.split('://')[0]}")
 
