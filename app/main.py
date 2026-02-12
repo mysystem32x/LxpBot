@@ -34,7 +34,6 @@ async def init_db():
             modules={'models': ['db.models']}
         )
     await Tortoise.generate_schemas()
-    logging.info(f"✅ База данных инициализирована: {DATABASE_URL.split('://')[0]}")
 
 async def close_db():
     """Закрытие соединений с БД"""
