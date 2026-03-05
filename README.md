@@ -75,27 +75,3 @@ python bot.py
 
 Бот сохранит эти данные локально (в памяти или базе данных) для последующих запросов к API.
 
-### Как настроить проект:
-
-1. **Получи токен бота:**
-   - Напиши [@BotFather](https://t.me/botfather) в Telegram
-   - Создай нового бота командой `/newbot`
-   - Скопируй полученный токен
-
-2. **Настрой окружение:**
-   ```bash
-   # Установи зависимости
-   pip install aiogram aiohttp python-dotenv pydantic
-   
-   # Создай файл .env
-   echo "BOT_TOKEN=твой_токен_бота" > .env
-   echo "API_URL=https://newlxp.ru/graphql" >> .env
-   ```
-
-3. **Проверь GraphQL API:**
-   Убедись, что эндпоинт `https://newlxp.ru/graphql` доступен. Можешь проверить через браузер или Postman.
-
-4. **Запусти бота:**
-   ```bash
-   python bot.py
-   ```
