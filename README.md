@@ -8,6 +8,7 @@ Telegram-бот для студентов платформы [newlxp.ru](https:/
 
 ## Demo
 <img width="3" height="2" alt="изображение" src="https://github.com/user-attachments/assets/a5f6b0aa-dbbe-41ef-9dae-b86c214204cd" />
+<img width="3" height="2" alt="изображение" src="https://github.com/user-attachments/assets/6155e42e-5d4c-4c19-a21e-a683edea0012" />
 
 ## 🚀 Быстрый старт
 
