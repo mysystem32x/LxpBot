@@ -1,4 +1,4 @@
-🎓 LXP Bot — Умный помощник для студентов NewLXP
+🎓 LXP Bot — Умный помощник для студентов ItHub
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![Aiogram](https://img.shields.io/badge/Aiogram-3.x-green)](https://docs.aiogram.dev)
