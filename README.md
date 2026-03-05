@@ -6,6 +6,9 @@
 
 Telegram-бот для студентов платформы [newlxp.ru](https://newlxp.ru), который предоставляет быстрый доступ к учебной информации через GraphQL API. Следи за расписанием, статусом обучения, задачами и получай уведомления прямо в Telegram.
 
+## Demo
+<img width="3" height="2" alt="изображение" src="https://github.com/user-attachments/assets/a5f6b0aa-dbbe-41ef-9dae-b86c214204cd" />
+
 ## 🚀 Быстрый старт
 
 ### Требования
